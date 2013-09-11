@@ -27,180 +27,125 @@
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
  */
 
-#include <stdio.h>
-
-#ifdef __linux__
-#include <endian.h>
-#else
-#define LITTLE_ENDIAN 1234
-#define BIG_ENDIAN 4321
-#define BYTE_ORDER 4321
-#endif
-
 #include "partition_map.h"
 #include "convert.h"
 
+#include <arpa/inet.h>
 
-//
-// Defines
-//
-
-
-//
-// Types
-//
-
-
-//
-// Global Constants
-//
-
-
-//
-// Global Variables
-//
-
-
-//
-// Forward declarations
-//
-void reverse2(u8 *bytes);
-void reverse4(u8 *bytes);
-
-
-//
-// Routines
-//
 int
 convert_dpme(DPME *data, int to_cpu_form)
 {
-#if BYTE_ORDER == LITTLE_ENDIAN
-    // Since we will toss the block if the signature doesn't match
-    // we don't need to check the signature down here.
-    reverse2((u8 *)&data->dpme_signature);
-    reverse2((u8 *)&data->dpme_reserved_1);
-    reverse4((u8 *)&data->dpme_map_entries);
-    reverse4((u8 *)&data->dpme_pblock_start);
-    reverse4((u8 *)&data->dpme_pblocks);
-    reverse4((u8 *)&data->dpme_lblock_start);
-    reverse4((u8 *)&data->dpme_lblocks);
-    reverse4((u8 *)&data->dpme_flags);
-    reverse4((u8 *)&data->dpme_boot_block);
-    reverse4((u8 *)&data->dpme_boot_bytes);
-    reverse4((u8 *)&data->dpme_load_addr);
-    reverse4((u8 *)&data->dpme_load_addr_2);
-    reverse4((u8 *)&data->dpme_goto_addr);
-    reverse4((u8 *)&data->dpme_goto_addr_2);
-    reverse4((u8 *)&data->dpme_checksum);
-    convert_bzb((BZB *)data->dpme_bzb, to_cpu_form);
-#endif
-    return 0;
+	// Since we will toss the block if the signature doesn't match
+	// we don't need to check the signature down here.
+	data->dpme_signature = htons(data->dpme_signature);
+	data->dpme_reserved_1 = htons(data->dpme_reserved_1);
+	data->dpme_map_entries = htonl(data->dpme_map_entries);
+	data->dpme_pblock_start = htonl(data->dpme_pblock_start);
+	data->dpme_pblocks = htonl(data->dpme_pblocks);
+	data->dpme_lblock_start = htonl(data->dpme_lblock_start);
+	data->dpme_lblocks = htonl(data->dpme_lblocks);
+	data->dpme_flags = htonl(data->dpme_flags);
+	data->dpme_boot_block = htonl(data->dpme_boot_block);
+	data->dpme_boot_bytes = htonl(data->dpme_boot_bytes);
+	data->dpme_load_addr = htonl(data->dpme_load_addr);
+	data->dpme_load_addr_2 = htonl(data->dpme_load_addr_2);
+	data->dpme_goto_addr = htonl(data->dpme_goto_addr);
+	data->dpme_goto_addr_2 = htonl(data->dpme_goto_addr_2);
+	data->dpme_checksum = htonl(data->dpme_checksum);
+	convert_bzb((BZB *)data->dpme_bzb, to_cpu_form);
+	return 0;
 }
 
-
-#if BYTE_ORDER == LITTLE_ENDIAN
 int
 convert_bzb(BZB *data, int to_cpu_form)
 {
-    // Since the data here varies according to the type of partition we
-    // do not want to convert willy-nilly. We use the flag to determine
-    // whether to check for the signature before or after we flip the bytes.
-    if (to_cpu_form) {
-	reverse4((u8 *)&data->bzb_magic);
-	if (data->bzb_magic != BZBMAGIC) {
-	    reverse4((u8 *)&data->bzb_magic);
-	    if (data->bzb_magic != BZBMAGIC) {
-		return 0;
-	    }
+	// Since the data here varies according to the type of partition we
+	// do not want to convert willy-nilly. We use the flag to determine
+	// whether to check for the signature before or after we flip the bytes.
+	if (to_cpu_form)
+	{
+		data->bzb_magic = htonl(data->bzb_magic);
+		if (data->bzb_magic != BZBMAGIC)
+		{
+			data->bzb_magic = htonl(data->bzb_magic);
+			if (data->bzb_magic != BZBMAGIC)
+			{
+				return 0;
+			}
+		}
 	}
-    } else {
-	if (data->bzb_magic != BZBMAGIC) {
-	    return 0;
+	else
+	{
+		if (data->bzb_magic != BZBMAGIC)
+		{
+			return 0;
+		}
+		data->bzb_magic = htonl(data->bzb_magic);
 	}
-	reverse4((u8 *)&data->bzb_magic);
-    }
-    reverse2((u8 *)&data->bzb_inode);
-    reverse4((u8 *)&data->bzb_flags);
-    reverse4((u8 *)&data->bzb_tmade);
-    reverse4((u8 *)&data->bzb_tmount);
-    reverse4((u8 *)&data->bzb_tumount);
-    return 0;
+	data->bzb_inode = htons(data->bzb_inode);
+	data->bzb_flags = htonl(data->bzb_flags);
+	data->bzb_tmade = htonl(data->bzb_tmade);
+	data->bzb_tmount = htonl(data->bzb_tmount);
+	data->bzb_tumount = htonl(data->bzb_tumount);
+	return 0;
 }
-#endif
 
 
 int
 convert_block0(Block0 *data, int to_cpu_form)
 {
-#if BYTE_ORDER == LITTLE_ENDIAN
-    DDMap *m;
-    u16 count;
-    int i;
+	// Since this data is optional we do not want to convert willy-nilly.
+	// We use the flag to determine whether to check for the signature
+	// before or after we flip the bytes and to determine which form of
+	// the count to use.
+	if (to_cpu_form)
+	{
+		data->sbSig = htons(data->sbSig);
+		if (data->sbSig != BLOCK0_SIGNATURE)
+		{
+			data->sbSig = htons(data->sbSig);
+			if (data->sbSig != BLOCK0_SIGNATURE)
+			{
+				return 0;
+			}
+		}
+	}
+	else
+	{
+		if (data->sbSig != BLOCK0_SIGNATURE)
+		{
+			return 0;
+		}
+		data->sbSig = htons(data->sbSig);
+	}
+	data->sbBlkSize = htons(data->sbBlkSize);
+	data->sbBlkCount = htonl(data->sbBlkCount);
+	data->sbDevType = htons(data->sbDevType);
+	data->sbDevId = htons(data->sbDevId);
+	data->sbData = htonl(data->sbData);
 
-    // Since this data is optional we do not want to convert willy-nilly.
-    // We use the flag to determine whether to check for the signature
-    // before or after we flip the bytes and to determine which form of
-    // the count to use.
-    if (to_cpu_form) {
-	reverse2((u8 *)&data->sbSig);
-	if (data->sbSig != BLOCK0_SIGNATURE) {
-	    reverse2((u8 *)&data->sbSig);
-	    if (data->sbSig != BLOCK0_SIGNATURE) {
-		return 0;
-	    }
+	uint16_t count;
+	if (to_cpu_form)
+	{
+		data->sbDrvrCount = htons(data->sbDrvrCount);
+		count = data->sbDrvrCount;
 	}
-    } else {
-	if (data->sbSig != BLOCK0_SIGNATURE) {
-	    return 0;
+	else
+	{
+		count = data->sbDrvrCount;
+		data->sbDrvrCount = htons(data->sbDrvrCount);
 	}
-	reverse2((u8 *)&data->sbSig);
-    }
-    reverse2((u8 *)&data->sbBlkSize);
-    reverse4((u8 *)&data->sbBlkCount);
-    reverse2((u8 *)&data->sbDevType);
-    reverse2((u8 *)&data->sbDevId);
-    reverse4((u8 *)&data->sbData);
-    if (to_cpu_form) {
-	reverse2((u8 *)&data->sbDrvrCount);
-	count = data->sbDrvrCount;
-    } else {
-	count = data->sbDrvrCount;
-	reverse2((u8 *)&data->sbDrvrCount);
-    }
 
-    if (count > 0) {
-	m = (DDMap *) data->sbMap;
-	for (i = 0; i < count; i++) {
-	    reverse4((u8 *)&m[i].ddBlock);
-	    reverse2((u8 *)&m[i].ddSize);
-	    reverse2((u8 *)&m[i].ddType);
+	if (count > 0)
+	{
+		DDMap* m = (DDMap *) data->sbMap;
+		for (int i = 0; i < count; i++)
+		{
+			m[i].ddBlock = htonl(m[i].ddBlock);
+			m[i].ddSize = htons(m[i].ddSize);
+			m[i].ddType = htons(m[i].ddType);
+		}
 	}
-    }
-#endif
-    return 0;
+	return 0;
 }
 
-
-void
-reverse2(u8 *bytes)
-{
-    u8 t;
-
-    t = *bytes;
-    *bytes = bytes[1];
-    bytes[1] = t;
-}
-
-
-void
-reverse4(u8 *bytes)
-{
-    u8 t;
-
-    t = *bytes;
-    *bytes = bytes[3];
-    bytes[3] = t;
-    t = bytes[1];
-    bytes[1] = bytes[2];
-    bytes[2] = t;
-}

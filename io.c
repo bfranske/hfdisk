@@ -26,9 +26,9 @@
  */
 
 #include <stdio.h>
-#ifndef __linux__
 #include <stdlib.h>
 #include <fcntl.h>
+#ifndef __linux__
 #include <SCSI.h>
 #else
 #ifdef __GLIBC__

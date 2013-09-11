@@ -24,18 +24,11 @@
  * NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION 
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
  */
-
+#ifndef partition_map_h
+#define partition_map_h
 #include "dpme.h"
+#include <stdint.h>
 
-
-//
-// Defines
-//
-
-
-//
-// Types
-//
 struct partition_map_header {
     int fd;
     char *name;
@@ -47,7 +40,7 @@ struct partition_map_header {
     int regular_file;
     int blocks_in_map;
     int maximum_in_map;
-    unsigned long media_size;
+    uint32_t media_size;
 };
 typedef struct partition_map_header partition_map_header;
 
@@ -76,14 +69,9 @@ extern const char * kFreeName;
 
 
 //
-// Global Variables
-//
-
-
-//
 // Forward declarations
 //
-int add_partition_to_map(const char *name, const char *dptype, u32 base, u32 length, partition_map_header *map);
+int add_partition_to_map(const char *name, const char *dptype, uint32_t base, uint32_t length, partition_map_header *map);
 void close_partition_map(partition_map_header *map);
 void delete_partition_from_map(partition_map *entry);
 partition_map* find_entry_by_disk_address(long index, partition_map_header *map);
@@ -92,3 +80,5 @@ void move_entry_in_map(long old_index, long index, partition_map_header *map);
 partition_map_header* open_partition_map(char *name, int *valid_file);
 void resize_map(long new_size, partition_map_header *map);
 void write_partition_map(partition_map_header *map);
+
+#endif

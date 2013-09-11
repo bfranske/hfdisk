@@ -26,18 +26,15 @@
  */
 
 #include <stdio.h>
-#ifndef __linux__
 #include <stdlib.h>
 #include <unistd.h>
-#endif
 #include <errno.h>
+#include <string.h>
 
 #include <fcntl.h>
-#ifdef __linux__
 #include <sys/ioctl.h>
-#include "kernel-defs.h"
 #include <sys/stat.h>
-#endif
+#include <linux/fs.h> // For IOCTLs
 
 #include "partition_map.h"
 #include "pdisk.h"
@@ -87,7 +84,7 @@ void coerce_block0(partition_map_header *map);
 int contains_driver(partition_map *entry);
 void combine_entry(partition_map *entry);
 long compute_device_size(int fd);
-DPME* create_data(const char *name, const char *dptype, u32 base, u32 length);
+DPME* create_data(const char *name, const char *dptype, uint32_t base, uint32_t length);
 partition_map_header* create_partition_map(char *name);
 void delete_entry(partition_map *entry);
 void insert_in_base_order(partition_map *entry);
@@ -197,7 +194,7 @@ int
 read_partition_map(partition_map_header *map)
 {
     DPME *data;
-    u32 limit;
+    uint32_t limit;
     int index;
 
     data = (DPME *) malloc(PBLOCK_SIZE);
@@ -515,17 +512,17 @@ coerce_block0(partition_map_header *map)
 
 
 int
-add_partition_to_map(const char *name, const char *dptype, u32 base, u32 length,
+add_partition_to_map(const char *name, const char *dptype, uint32_t base, uint32_t length,
 	partition_map_header *map)
 {
     partition_map * cur;
     DPME *data;
     enum add_action act;
     int limit;
-    u32 adjusted_base;
-    u32 adjusted_length;
-    u32 new_base;
-    u32 new_length;
+    uint32_t adjusted_base;
+    uint32_t adjusted_length;
+    uint32_t new_base;
+    uint32_t new_length;
 
 	// find a block that starts includes base and length
     cur = map->base_order;
@@ -615,7 +612,7 @@ add_partition_to_map(const char *name, const char *dptype, u32 base, u32 length,
 
 
 DPME *
-create_data(const char *name, const char *dptype, u32 base, u32 length)
+create_data(const char *name, const char *dptype, uint32_t base, uint32_t length)
 {
     DPME *data;
 

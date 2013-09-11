@@ -30,19 +30,9 @@
 #include "bitfield.h"
 
 //
-// Defines
-//
-
-
-//
-// Types
-//
-
-
-//
 // Global Constants
 //
-const unsigned long masks[] = {
+static const uint32_t masks[] = {
     0x00000000,
     0x00000001, 0x00000003, 0x00000007, 0x0000000F,
     0x0000001F, 0x0000003F, 0x0000007F, 0x000000FF,
@@ -54,48 +44,27 @@ const unsigned long masks[] = {
     0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF
 };
 
-//
-// Global Variables
-//
-
-
-//
-// Forward declarations
-//
-
-
-//
-// Routines
-//
-unsigned long
-bitfield_set(unsigned long *bf, int base, int length, unsigned long value)
+uint32_t
+bitfield_set(uint32_t *bf, int base, int length, uint32_t value)
 {
-    unsigned long t;
-    unsigned long m;
-    int s;
-    int i;
-
     // compute shift & mask, coerce value to correct number of bits,
     // zap the old bits and stuff the new value
     // return the masked value in case someone wants it.
-    s = (base + 1) - length;
-    m = masks[length];
-    t = value & m;
+    int s = (base + 1) - length;
+    uint32_t m = masks[length];
+    uint32_t t = value & m;
     *bf = (*bf & ~(m << s)) | (t << s);
     return t;
 }
 
 
-unsigned long
-bitfield_get(unsigned long bf, int base, int length)
+uint32_t
+bitfield_get(uint32_t bf, int base, int length)
 {
-    unsigned long m;
-    int s;
-    int i;
-
     // compute shift & mask
     // return the correct number of bits (shifted to low end)
-    s = (base + 1) - length;
-    m = masks[length];
+    int s = (base + 1) - length;
+    uint32_t m = masks[length];
     return ((bf >> s) & m);
 }
+

@@ -30,10 +30,8 @@
  */
 
 #include <stdio.h>
-#ifndef __linux__
 #include <stdlib.h>
 #include <unistd.h>
-#endif
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -209,7 +207,7 @@ dump_partition_entry(partition_map *entry, int digits, char *dev)
     int aflag = 0;
 #endif
     int pflag = 1;
-    u32 size;
+    uint32_t size;
     double bytes;
 
 
@@ -418,8 +416,8 @@ show_data_structures(partition_map_header *map)
     printf("\n");
 
 /*
-u32     dpme_boot_args[32]      ;
-u32     dpme_reserved_3[62]     ;
+uint32_t     dpme_boot_args[32]      ;
+uint32_t     dpme_reserved_3[62]     ;
 */
     printf(" #:                 type  length   base    "
 	    "flags     (logical)\n");

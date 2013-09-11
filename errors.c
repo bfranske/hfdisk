@@ -26,9 +26,7 @@
  */
 
 #include <stdio.h>
-#ifndef __linux__
 #include <stdlib.h>
-#endif
 #include <string.h>
 #include <stdarg.h>
 

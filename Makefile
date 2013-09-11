@@ -1,23 +1,10 @@
-all: pdisk fdisk
+CFLAGS=-std=gnu99
+all: pdisk
 
 pdisk: pdisk.o dump.o partition_map.o convert.o io.o errors.o bitfield.o
 
-fdisk: fdisk.o fdisklabel.o
-
 clean:
-	rm -f *.o pdisk fdisk mac-fdisk pmac-fdisk
-
-install: pdisk fdisk
-	-rm -f pmac-fdisk mac-fdisk
-	ln pdisk mac-fdisk
-	ln fdisk pmac-fdisk
-	install -o root -g root -m 0755 mac-fdisk ${DESTDIR}/sbin
-	install -o root -g root -m 0755 pmac-fdisk ${DESTDIR}/sbin
-
-distribution:
-	cd ..; tar cvf pdisk.src.tar.`date +%y%m%d` --files-from pdisk/list.src
-	tar cvf ../pdisk.bin.tar.`date +%y%m%d` pdisk fdisk pdisk.8
-	cp pdisk.hqx ../pdisk.hqx.`date +%y%m%d`
+	rm -f *.o pdisk
 
 convert.o: convert.c partition_map.h convert.h
 dump.o: dump.c io.h errors.h partition_map.h

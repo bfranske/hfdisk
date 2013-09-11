@@ -28,20 +28,13 @@
  */
 
 #include <stdio.h>
-#ifdef __linux__
 #include <getopt.h>
 #include <stddef.h>
-#else
-#include <stdlib.h>
-#include <unistd.h>
-#include <SIOUX.h>
-#endif
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 
-#ifdef __linux__
 #include <sys/ioctl.h>
-#include "kernel-defs.h"
-#endif
 
 #include "pdisk.h"
 #include "io.h"
@@ -55,9 +48,6 @@
 // Defines
 //
 #define ARGV_CHUNK 5
-#ifdef __linux__
-#define std_main main
-#endif
 
 
 //
@@ -109,7 +99,6 @@ void print_notes();
 //
 // Routines
 //
-#ifdef __linux__
 int
 main(int argc, char **argv)
 {
@@ -155,97 +144,8 @@ main(int argc, char **argv)
     }
     exit(err);
 }
-#else
-main()
-{
-    char *name;
-    int command;
-    int first = 1;
-
-    printf("This app uses the SIOUX console library\n");
-    printf("Choose 'Quit' from the file menu to quit.\n\n");
-    printf("Use MkLinux style disk names (i.e. /dev/sda, /dev/sdb, etc.).\n\n");
- 
-    SIOUXSettings.autocloseonquit = 0;	/* Do we close the SIOUX window on program termination ... */
-    SIOUXSettings.asktosaveonclose = 0;	/* Do we offer to save on a close ... */
-    
-    if (sizeof(DPME) != PBLOCK_SIZE) {
-	fatal(-1, "Size of partion map entry (%d) "
-		"is not equal to block size (%d)\n",
-		sizeof(DPME), PBLOCK_SIZE);
-    }
-    if (sizeof(Block0) != PBLOCK_SIZE) {
-	fatal(-1, "Size of block zero structure (%d) "
-		"is not equal to block size (%d)\n",
-		sizeof(Block0), PBLOCK_SIZE);
-    }
-    init_program_name(NULL);
-
-    while (get_command("Top level command (? for help): ", first, &command)) {
-	first = 0;
-
-	switch (command) {
-	case '?':
-	    print_notes();
-	case 'H':
-	case 'h':
-	    printf("Commands are:\n");
-	    printf("  h    print help\n");
-	    printf("  v    print the version number and release date\n");
-	    printf("  l    list device's map\n");
-	    printf("  L    list all devices' maps\n");
-	    printf("  e    edit device's map\n");
-	    printf("  r    toggle readonly flag\n");
-	    printf("  q    quit the program\n");
-	    break;
-	case 'Q':
-	case 'q':
-	    goto finis;
-	    break;
-	case 'V':
-	case 'v':
-	    printf("version " VERSION " (" RELEASE_DATE ")\n");
-	    break;
-	case 'L':
-	    list_all_disks();
-	    break;
-	case 'l':
-	    if (get_string_argument("Name of device: ", &name, 1) == 0) {
-		bad_input("Bad name");
-		break;
-	    }
-	    dump(name);
-	    break;
-	case 'E':
-	case 'e':
-	    if (get_string_argument("Name of device: ", &name, 1) == 0) {
-		bad_input("Bad name");
-		break;
-	    }
-	    edit(name);
-	    break;
-	case 'R':
-	case 'r':
-	    if (rflag) {
-		rflag = 0;
-	    } else {
-		rflag = 1;
-	    }
-	    printf("Now in %s mode.\n", (rflag)?"readonly":"read/write");
-	    break;
-	default:
-	    bad_input("No such command (%c)", command);
-	    break;
-	}
-    }
-finis:
-
-    printf("Processing stopped: Choose 'Quit' from the file menu to quit.\n\n");
-}
-#endif
 
 
-#ifdef __linux__
 int
 get_options(int argc, char **argv)
 {
@@ -312,7 +212,6 @@ get_options(int argc, char **argv)
     }
     return optind;
 }
-#endif
 
 //
 // Edit the file
@@ -322,11 +221,7 @@ edit(char *name)
 {
     partition_map_header *map;
     int command;
-#ifdef __linux__
     int first = 1;
-#else
-    int first = 0;
-#endif
     int order;
     int get_type;
     int valid_file;

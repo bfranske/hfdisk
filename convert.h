@@ -28,31 +28,14 @@
  * NEGLIGENCE, OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION 
  * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
  */
+#ifndef convert_h
+#define convert_h
 
+#include "dpme.h"
 
-//
-// Defines
-//
-
-
-//
-// Types
-//
-
-
-//
-// Global Constants
-//
-
-
-//
-// Global Variables
-//
-
-
-//
-// Forward declarations
-//
 int convert_block0(Block0 *data, int to_cpu_form);
 int convert_bzb(BZB *data, int to_cpu_form);
 int convert_dpme(DPME *data, int to_cpu_form);
+
+#endif
+
