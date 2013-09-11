@@ -1,5 +1,5 @@
 //
-// pdisk - an editor for Apple format partition tables
+// hfdisk - an editor for Apple format partition tables
 //
 // Written by Eryk Vershen (eryk@apple.com)
 //
@@ -36,7 +36,7 @@
 
 #include <sys/ioctl.h>
 
-#include "pdisk.h"
+#include "hfdisk.h"
 #include "io.h"
 #include "errors.h"
 #include "partition_map.h"
