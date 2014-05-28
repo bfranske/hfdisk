@@ -31,7 +31,7 @@
 #include <stdarg.h>
 
 #include "errors.h"
-#include "pdisk.h"
+#include "hfdisk.h"
 
 
 //
@@ -66,15 +66,11 @@ char *program_name;
 void
 init_program_name(char **argv)
 {
-#ifdef __linux__
     if ((program_name = strrchr(argv[0], '/')) != (char *)NULL) {
 	program_name++;
     } else {
 	program_name = argv[0];
     }
-#else
-    program_name = "pdisk";
-#endif
 }
 
 
@@ -112,15 +108,7 @@ fatal(int value, char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     va_end(ap);
 
-#ifdef __linux__
-    if (value > 0 && value < sys_nerr) {
-	fprintf(stderr, "  (%s)\n", sys_errlist[value]);
-    } else {
-	fprintf(stderr, "\n");
-    }
-#else
-    fprintf(stderr, "\n");
-#endif
+	fprintf(stderr, "  (%s)\n", strerror(value));
 
     exit(value);
 }
@@ -141,13 +129,5 @@ error(int value, char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     va_end(ap);
 
-#ifdef __linux__
-    if (value > 0 && value < sys_nerr) {
-	fprintf(stderr, "  (%s)\n", sys_errlist[value]);
-    } else {
-	fprintf(stderr, "\n");
-    }
-#else
-    fprintf(stderr, "\n");
-#endif
+	fprintf(stderr, "  (%s)\n", strerror(value));
 }

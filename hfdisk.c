@@ -331,7 +331,6 @@ do_create_partition(partition_map_header *map, int get_type)
 {
     long base;
     long length;
-    long mult;
     char *name;
     char *type_name;
 
@@ -493,7 +492,6 @@ do_delete_partition(partition_map_header *map)
 void
 do_reorder(partition_map_header *map)
 {
-    partition_map * cur;
     long old_index;
     long index;
 

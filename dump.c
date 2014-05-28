@@ -61,16 +61,16 @@ typedef struct names {
 // Global Constants
 //
 NAMES plist[] = {
-    "Drvr", "Apple_Driver",
-    "Dr43", "Apple_Driver43",
-    "Free", "Apple_Free",
-    " HFS", "Apple_HFS",
-    " MFS", "Apple_MFS",
-    "PDOS", "Apple_PRODOS",
-    "junk", "Apple_Scratch",
-    "unix", "Apple_UNIX_SVR2",
-    " map", "Apple_partition_map",
-    0,	0
+    {"Drvr", "Apple_Driver"},
+    {"Dr43", "Apple_Driver43"},
+    {"Free", "Apple_Free"},
+    {" HFS", "Apple_HFS"},
+    {" MFS", "Apple_MFS"},
+    {"PDOS", "Apple_PRODOS"},
+    {"junk", "Apple_Scratch"},
+    {"unix", "Apple_UNIX_SVR2"},
+    {" map", "Apple_partition_map"},
+    {0,	0}
 };
 
 const char * kStringEmpty	= "";
@@ -122,7 +122,6 @@ dump_block_zero(partition_map_header *map)
     }
     printf("\nBlock size=%u, Number of Blocks=%u\n",
 	    p->sbBlkSize, p->sbBlkCount);
-#ifndef __mc68000__
     printf("DeviceType=0x%x, DeviceId=0x%x\n",
 	    p->sbDevType, p->sbDevId);
     if (p->sbDrvrCount > 0) {
@@ -134,7 +133,6 @@ dump_block_zero(partition_map_header *map)
 	}
     }
     printf("\n");
-#endif
 }
 
 
@@ -150,23 +148,16 @@ dump_partition_map(partition_map_header *map, int disk_order)
 	bad_input("No partition map exists");
 	return;
     }
-#ifdef __mc68000__
-    printf("Disk %s\n", map->name);
-#else
     printf("%s\n", map->name);
-#endif
 
     j = number_of_digits(map->media_size);
     if (j < 7) {
 	j = 7;
     }
-#ifdef __mc68000__
-    printf("%*s  type name         "
-	    "%*s   %-*s ( size )  system\n", strlen(map->name)+1, "#", j, "length", j, "base");
-#else
+	// convert size_t to int for "*" format specifier
+	int mapNameWidth = strlen(map->name)+1;
     printf("%*s                    type name               "
-	    "%*s   %-*s ( size )  system\n", strlen(map->name)+1, "#", j, "length", j, "base");
-#endif
+	    "%*s   %-*s ( size )  system\n", mapNameWidth, "#", j, "length", j, "base");
 
     /* Grok devfs names. (courtesy Colin Walters)*/
 
@@ -196,22 +187,15 @@ dump_partition_map(partition_map_header *map, int disk_order)
 void
 dump_partition_entry(partition_map *entry, int digits, char *dev)
 {
-    partition_map_header *map;
     int j;
     DPME *p;
-    BZB *bp;
     char *s;
-#ifdef __mc68000__
-    int aflag = 1;
-#else
     int aflag = 0;
-#endif
     int pflag = 1;
     uint32_t size;
     double bytes;
 
 
-    map = entry->the_map;
     p = entry->data;
     if (aflag) {
 	s = "????";
@@ -221,13 +205,9 @@ dump_partition_entry(partition_map *entry, int digits, char *dev)
 		break;
 	    }
 	}
-#ifdef __mc68000__
-	printf("%s%-2d %.4s %-12.12s ", dev, entry->disk_address, s, p->dpme_name);
-#else
-	printf("%s%-4d  %.4s %-18.32s ", dev, entry->disk_address, s, p->dpme_name);
-#endif
+	printf("%s%-4ld  %.4s %-18.32s ", dev, entry->disk_address, s, p->dpme_name);
     } else {
-	printf("%s%-4d %20.32s %-18.32s ", dev, 
+	printf("%s%-4ld %20.32s %-18.32s ", dev, 
 		entry->disk_address, p->dpme_type, p->dpme_name);
     }
 
@@ -312,7 +292,6 @@ list_all_disks()
     int i;
     int fd;
     DPME * data;
-    long t;
 
     data = (DPME *) malloc(PBLOCK_SIZE);
     if (data == NULL) {
@@ -322,13 +301,9 @@ list_all_disks()
     for (i = 0; i < 7; i++) {
 	sprintf(name, "/dev/sd%c", 'a'+i);
 	if ((fd = open_device(name, O_RDONLY)) < 0) {
-#ifdef __linux__
 	    if (errno == EACCES) {
 		error(errno, "can't open file '%s'", name);
 	    }
-#else
-	    error(errno, "can't open file '%s'", name);
-#endif
 	    continue;
 	}
 	if (read_block(fd, 1, (char *)data, 1) == 0) {
@@ -339,7 +314,6 @@ list_all_disks()
 
 	dump(name);
     }
-#ifdef __linux__
     for (i = 0; i < 4; i++) {
 	sprintf(name, "/dev/hd%c", 'a'+i);
 	if ((fd = open_device(name, O_RDONLY)) < 0) {
@@ -356,7 +330,6 @@ list_all_disks()
 
 	dump(name);
     }
-#endif
     free(data);
 }
 
@@ -423,7 +396,7 @@ uint32_t     dpme_reserved_3[62]     ;
 	    "flags     (logical)\n");
     for (entry = map->disk_order; entry != NULL; entry = entry->next_on_disk) {
 	p = entry->data;
-	printf("%2d: %20.32s ",
+	printf("%2ld: %20.32s ",
 		entry->disk_address, p->dpme_type);
 	printf("%7u @ %-7u ", p->dpme_pblocks, p->dpme_pblock_start);
 	printf("%c%c%c%c%c%c%c%c%c%c ",
@@ -447,7 +420,7 @@ uint32_t     dpme_reserved_3[62]     ;
 	    "goto_address checksum processor\n");
     for (entry = map->disk_order; entry != NULL; entry = entry->next_on_disk) {
 	p = entry->data;
-	printf("%2d: ", entry->disk_address);
+	printf("%2ld: ", entry->disk_address);
 	printf("%7u ", p->dpme_boot_block);
 	printf("%7u ", p->dpme_boot_bytes);
 	printf("%8x ", p->dpme_load_addr);
@@ -464,7 +437,7 @@ xx: cccc RU *dd s...
 */
     for (entry = map->disk_order; entry != NULL; entry = entry->next_on_disk) {
 	p = entry->data;
-	printf("%2d: ", entry->disk_address);
+	printf("%2ld: ", entry->disk_address);
 
 	bp = (BZB *) (p->dpme_bzb);
 	j = -1;

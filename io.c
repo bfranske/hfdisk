@@ -28,19 +28,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#ifndef __linux__
-#include <SCSI.h>
-#else
-#ifdef __GLIBC__
 #include <sys/types.h>
-#endif
-#endif
 #include <unistd.h>
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
 
-#include "pdisk.h"
+#include "hfdisk.h"
 #include "io.h"
 #include "errors.h"
 
@@ -51,14 +45,6 @@
 #define BAD_DIGIT 17	/* must be greater than any base */
 #define	STRING_CHUNK	16
 #define UNGET_MAX_COUNT 10
-#ifndef __linux__
-#define SCSI_FD 8
-#define loff_t long
-#define llseek lseek
-#else
-#define llseek lseek64
-#endif
-
 
 //
 // Types
@@ -83,11 +69,6 @@ int unget_count;
 //
 long get_number(int first_char);
 char* get_string(int eos);
-#ifndef __linux__
-int DoTestUnitReady(UInt8 targetID);
-int DoRead(UInt8 targetID, UInt32 block, UInt16 count, char* addr);
-int DoWrite(UInt8 targetID, UInt32 block, UInt16 count, char* addr);
-#endif
 
 
 //
@@ -147,7 +128,7 @@ get_okay(char *prompt, int default_value)
     int		c;
 
     flush_to_newline(0);
-    printf(prompt);
+    printf("%s", prompt);
 
     for (;;) {
 	c = getch();
@@ -165,7 +146,7 @@ get_okay(char *prompt, int default_value)
 	    return 0;
 	} else {
 	    flush_to_newline(0);
-	    printf(prompt);
+	    printf("%s", prompt);
 	}
     }
     return -1;
@@ -178,7 +159,7 @@ get_command(char *prompt, int promptBeforeGet, int *command)
     int		c;
 
     if (promptBeforeGet) {
-	printf(prompt);
+	printf("%s", prompt);
     }	
     for (;;) {
 	c = getch();
@@ -188,7 +169,7 @@ get_command(char *prompt, int promptBeforeGet, int *command)
 	} else if (c == ' ' || c == '\t') {
 	    // skip blanks and tabs
 	} else if (c == '\n') {
-	    printf(prompt);
+	    printf("%s", prompt);
 	} else {
 	    *command = c;
 	    return 1;
@@ -213,7 +194,7 @@ get_number_argument(char *prompt, long *number, long default_value)
 	    // skip blanks and tabs
 	} else if (c == '\n') {
 	    if (default_value < 0) {
-		printf(prompt);
+		printf("%s", prompt);
 	    } else {
 		ungetch(c);
 		*number = default_value;
@@ -291,7 +272,7 @@ get_string_argument(char *prompt, char **string, int reprompt)
 	    // skip blanks and tabs
 	} else if (c == '\n') {
 	    if (reprompt) {
-		printf(prompt);
+		printf("%s", prompt);
 	    } else {
 		ungetch(c);
 		*string = NULL;
@@ -430,19 +411,12 @@ bad_input(char *fmt, ...)
 int
 read_block(int fd, unsigned long num, char *buf, int quiet)
 {
-    loff_t x;
+    off_t x;
     long t;
 
-#ifndef __linux__
-    if (fd <= SCSI_FD) {
-    	//printf("Read block %d of scsi device %d\n", num, fd);
-    	return DoRead(fd, num, 1, buf);
-    } else {
-#else
     {
-#endif
 	x = ((long long) num * PBLOCK_SIZE); /* cast to ll to work around compiler bug */
-	if ((x = lseek64(fd, x, 0)) < 0) {
+	if ((x = lseek(fd, x, 0)) < 0) {
 	    if (quiet == 0) {
 		error(errno, "Can't seek on file");
 	    }
@@ -462,21 +436,14 @@ read_block(int fd, unsigned long num, char *buf, int quiet)
 int
 write_block(int fd, unsigned long num, char *buf)
 {
-    loff_t x;
+    off_t x;
     long t;
 
     if (rflag) {
-	printf("Can't write block %u to file", num);
+	printf("Can't write block %lu to file", num);
 	return 0;
     }
-#ifndef __linux__
-    if (fd <= SCSI_FD) {
-    	//printf("Write block %d of scsi device %d\n", num, fd);
-    	return DoWrite(fd, num, 1, buf);
-    } else {
-#else
     {
-#endif
 	x = num * PBLOCK_SIZE;
 	if ((x = lseek(fd, x, 0)) < 0) {
 	    error(errno, "Can't seek on file");
@@ -494,42 +461,12 @@ write_block(int fd, unsigned long num, char *buf)
 int
 close_device(int fildes)
 {
-#ifndef __linux__
-    if (fildes <= SCSI_FD) {
-    	//printf("Close of scsi device %d\n", fildes);
-    	return 1;
-    } else {
-#else
-    {
-#endif
 	return close(fildes);
-    }
 }
 
 
 int
 open_device(const char *path, int oflag)
 {
-#ifndef __linux__
-    int id;
-    int fd;
-    DeviceIdent scsiDevice;
-    
-    if (strncmp("/dev/sd", path, 7) == 0
-    	    && path[7] >= 'a' && path[7] <= 'g'
-    	    && path[8] == 0) {
-    	id = path[7] - 'a';
-    	//printf("Open scsi device %d\n", id);
-
-	if (DoTestUnitReady(id) > 0) {
-	    return id;
-	} else {
-	    return -1;
-	}
-    } else {
-#else
-    {
-#endif
 	return open(path, oflag);
-    }
 }

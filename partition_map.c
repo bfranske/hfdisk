@@ -34,24 +34,16 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+
+#ifdef __linux__
 #include <linux/fs.h> // For IOCTLs
+#endif
 
 #include "partition_map.h"
-#include "pdisk.h"
+#include "hfdisk.h"
 #include "convert.h"
 #include "io.h"
 #include "errors.h"
-
-
-//
-// Defines
-//
-// #define TEST_COMPUTE
-
-
-//
-// Types
-//
 
 
 //
@@ -103,10 +95,7 @@ open_partition_map(char *name, int *valid_file)
     int fd;
     partition_map_header * map;
     int writeable;
-    unsigned long length;
-#ifdef __linux__
     struct stat info;
-#endif
 
     fd = open_device(name, (rflag)?O_RDONLY:O_RDWR);
     if (fd < 0) {
@@ -139,16 +128,12 @@ open_partition_map(char *name, int *valid_file)
     map->maximum_in_map = -1;
     map->media_size = compute_device_size(fd);
 
-#ifdef __linux__
     if (fstat(fd, &info) < 0) {
 	error(errno, "can't stat file '%s'", name);
 	map->regular_file = 0;
     } else {
 	map->regular_file = S_ISREG(info.st_mode);
     }
-#else
-    map->regular_file = 0;
-#endif
 
     map->misc = (Block0 *) malloc(PBLOCK_SIZE);
     if (map->misc == NULL) {
@@ -287,11 +272,11 @@ write_partition_map(partition_map_header *map)
     }
     printf("The partition map has been saved successfully!\n\n");
 
-#ifdef __linux__
     if (map->regular_file) {
 	close_device(map->fd);
     } else {
-	// printf("Calling ioctl() to re-read partition table.\n");
+#ifdef BLKFLSBUF
+	 printf("Calling ioctl() to re-read partition table.\n");
 	if ((i = ioctl(fd, BLKFLSBUF)) != 0) {
 	    perror("ioctl(BLKFLSBUF)");
 	    sync();
@@ -326,10 +311,12 @@ write_partition_map(partition_map_header *map)
 	    printf("Reboot your system to ensure the "
 		    "partition table is updated.\n");
 	}
-    }
 #else
-    close_device(map->fd);
+	printf("Reboot your system to ensure the "
+			"partition table is updated.\n");
+	close_device(map->fd);
 #endif
+    }
     map->fd = open_device(map->name, (map->writeable)?O_RDWR:O_RDONLY);
     if (map->fd < 0) {
 	fatal(errno, "can't re-open file '%s' for %sing", map->name,
@@ -400,13 +387,9 @@ create_partition_map(char *name)
 {
     int fd;
     partition_map_header * map;
-    unsigned long length;
     DPME *data;
-    int ok;
     unsigned long number;
-#ifdef __linux__
     struct stat info;
-#endif
 
     fd = open_device(name, (rflag)?O_RDONLY:O_RDWR);
     if (fd < 0) {
@@ -431,25 +414,21 @@ create_partition_map(char *name)
     map->maximum_in_map = -1;
 
     number = compute_device_size(fd);
-    printf("size of 'device' is %u blocks: ", number);
+    printf("size of 'device' is %lu blocks: ", number);
     flush_to_newline(0);
     get_number_argument("what should be the size? ", (long *)&number, number);
     if (number < 4) {
 	number = 4;
     }
-    printf("new size of 'device' is %u blocks\n", number);
+    printf("new size of 'device' is %lu blocks\n", number);
     map->media_size = number;
 
-#ifdef __linux__
     if (fstat(fd, &info) < 0) {
 	error(errno, "can't stat file '%s'", name);
 	map->regular_file = 0;
     } else {
 	map->regular_file = S_ISREG(info.st_mode);
     }
-#else
-    map->regular_file = 0;
-#endif
 
     map->misc = (Block0 *) malloc(PBLOCK_SIZE);
     if (map->misc == NULL) {
@@ -660,51 +639,9 @@ renumber_disk_addresses(partition_map_header *map)
 long
 compute_device_size(int fd)
 {
-#ifdef TEST_COMPUTE
-    unsigned long length;
-    struct hd_geometry geometry;
-    struct stat info;
-    loff_t pos;
-#endif
     char* data;
     unsigned long l, r, x;
     int valid;
-
-#ifdef TEST_COMPUTE
-    printf("\n");
-    if (fstat(fd, &info) < 0) {
-	printf("stat of device failed\n");
-    } else {
-	printf("stat: mode = 0%o, type=%s\n", info.st_mode, 
-		(S_ISREG(info.st_mode)? "Regular":
-		(S_ISBLK(info.st_mode)?"Block":"Other")));
-	printf("size = %d, blocks = %d\n",
-		info.st_size, info.st_size/PBLOCK_SIZE);
-    }
-
-    if (ioctl(fd, BLKGETSIZE, &length) < 0) {
-	printf("get device size failed\n");
-    } else {
-	printf("BLKGETSIZE:size in blocks = %u\n", length);
-    }
-
-    if (ioctl(fd, HDIO_GETGEO, &geometry) < 0) {
-	printf("get device geometry failed\n");
-    } else {
-	printf("HDIO_GETGEO: heads=%d, sectors=%d, cylinders=%d, start=%d,  total=%d\n",
-		geometry.heads, geometry.sectors,
-		geometry.cylinders, geometry.start,
-		geometry.heads*geometry.sectors*geometry.cylinders);
-    }
-
-    if ((pos = lseek64(fd, 0, SEEK_END)) < 0) {
-	printf("llseek to end of device failed\n");
-    } else if ((pos = lseek64(fd, 0, SEEK_CUR)) < 0) {
-	printf("llseek to end of device failed on second try\n");
-    } else {
-	printf("llseek: pos = %d, blocks=%d\n", pos, pos/PBLOCK_SIZE);
-    }
-#endif
 
     data = (char *) malloc(PBLOCK_SIZE);
     if (data == NULL) {

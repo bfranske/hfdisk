@@ -45,8 +45,8 @@
  * version will be be represented by a larger number.
  */
 
-#define	VERSION	"1.0-rc1"
-#define RELEASE_DATE "11 September 2013"
+#define	VERSION	"1.0-rc3"
+#define RELEASE_DATE "28 May 2014"
 
 #define	kVersionMajor	0x01		/* ie. N has two BCD digits */
 #define	kVersionMinor	0x0		/* ie. M has a single BCD digit */

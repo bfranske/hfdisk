@@ -1,4 +1,4 @@
-CFLAGS=-std=gnu99
+CFLAGS=-std=gnu99 -Wall
 all: hfdisk
 
 hfdisk: hfdisk.o dump.o partition_map.o convert.o io.o errors.o bitfield.o

@@ -69,7 +69,7 @@ struct Block0 {
     uint32_t 	sbData;		/* not used */
     uint16_t 	sbDrvrCount;	/* driver descriptor count */
     uint16_t 	sbMap[247];	/* descriptor map */
-};
+} __attribute__((packed));
 typedef struct Block0 Block0;
 
 // Where &sbMap[0] is actually an array DDMap[sbDrvrCount]
@@ -78,7 +78,7 @@ struct DDMap {
     uint32_t 	ddBlock;	/* 1st driver's starting block */
     uint16_t 	ddSize;		/* size of 1st driver (512-byte blks) */
     uint16_t 	ddType;		/* system type (1 for Mac+) */
-};
+} __attribute__((packed));
 typedef struct DDMap DDMap;
 
 
@@ -116,7 +116,7 @@ struct dpme {
     char    dpme_process_id[16]     ;
     uint32_t     dpme_boot_args[32]      ;
     uint32_t     dpme_reserved_3[62]     ;
-};
+} __attribute__((packed));
 typedef struct dpme DPME;
 
 #define	dpme_automount_set(p, v)	bitfield_set(&p->dpme_flags, 30, 1, v) /* MSch */
@@ -150,13 +150,13 @@ struct abm		/* altblk map info stored in bzb */
     uint32_t  abm_size;	/* size of map in bytes */
     uint32_t  abm_ents;	/* number of used entries */
     uint32_t  abm_start;	/* start of altblk map */
-};
+} __attribute__((packed));
 typedef	struct abm ABM;
 
 // BZB (Block Zero Block, but I can't remember the etymology)
 // Where &dpme_boot_args[0] is actually the address of a struct bzb
 // kludge to get around alignment junk
-struct	bzb			/* block zero block format */
+struct bzb			/* block zero block format */
 {
     uint32_t  bzb_magic;		/* magic number */
     uint8_t   bzb_cluster;		/* Autorecovery cluster grouping */
@@ -177,7 +177,7 @@ struct	bzb			/* block zero block format */
     ABM  bzb_abm;		/* altblk map info */
     uint32_t  bzb_fill2[7];		/* for expansion of ABM (ha!ha!) */
     uint8_t   bzb_mount_point[64];	/* default mount point name */
-};
+} __attribute__((packed));
 typedef	struct bzb	BZB;
 
 #define	bzb_root_set(p, v)		bitfield_set(&p->bzb_flags, 31, 1, v)
