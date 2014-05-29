@@ -75,10 +75,12 @@ int add_partition_to_map(const char *name, const char *dptype, uint32_t base, ui
 void close_partition_map(partition_map_header *map);
 void delete_partition_from_map(partition_map *entry);
 partition_map* find_entry_by_disk_address(long index, partition_map_header *map);
+partition_map* find_entry_by_sector(uint32_t lba, partition_map_header *map);
 partition_map_header* init_partition_map(char *name, partition_map_header* oldmap);
 void move_entry_in_map(long old_index, long index, partition_map_header *map);
 partition_map_header* open_partition_map(char *name, int *valid_file);
 void resize_map(long new_size, partition_map_header *map);
 void write_partition_map(partition_map_header *map);
+uint32_t find_free_space(partition_map_header *map);
 
 #endif

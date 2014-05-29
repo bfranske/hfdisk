@@ -60,323 +60,126 @@ const long kDefault = -1;
 //
 // Global Variables
 //
-short unget_buf[UNGET_MAX_COUNT+1];
-int unget_count;
 
 
 //
 // Forward declarations
 //
-long get_number(int first_char);
-char* get_string(int eos);
 
 
 //
 // Routines
 //
-int
-getch()
-{
-    if (unget_count > 0) {
-	return (unget_buf[--unget_count]);
-    } else {
-	return (getc(stdin));
-    }
-}
-
-
-void
-ungetch(int c)
-{
-    // In practice there is never more than one character in
-    // the unget_buf, but what's a little overkill among friends?
-
-    if (unget_count < UNGET_MAX_COUNT) {
-	unget_buf[unget_count++] = c;
-    } else {
-	fatal(-1, "Programmer error in ungetch().");
-    }
-}
-
-	
-void
-flush_to_newline(int keep_newline)
-{
-    int		c;
-
-    for (;;) {
-	c = getch();
-
-	if (c <= 0) {
-	    break;
-	} else if (c == '\n') {
-	    if (keep_newline) {
-		ungetch(c);
-	    }
-	    break;
-	} else {
-	    // skip
-	}
-    }
-    return;
-}
 
 
 int
-get_okay(char *prompt, int default_value)
+get_okay(char *prompt)
 {
-    int		c;
-
-    flush_to_newline(0);
-    printf("%s", prompt);
-
-    for (;;) {
-	c = getch();
-
-	if (c <= 0) {
-	    break;
-	} else if (c == ' ' || c == '\t') {
-	    // skip blanks and tabs
-	} else if (c == '\n') {
-	    ungetch(c);
-	    return default_value;
-	} else if (c == 'y' || c == 'Y') {
-	    return 1;
-	} else if (c == 'n' || c == 'N') {
-	    return 0;
-	} else {
-	    flush_to_newline(0);
-	    printf("%s", prompt);
+    int result = 0;
+    char* string = NULL;
+    if (get_string_argument(prompt, &string, 1))
+    {
+	if (string[0] == 'Y' || string[0] == 'y')
+	{
+	    result = 1;
 	}
     }
-    return -1;
+    free(string);
+    return result;
 }
 
 	
 int
 get_command(char *prompt, int promptBeforeGet, int *command)
 {
-    int		c;
-
-    if (promptBeforeGet) {
-	printf("%s", prompt);
-    }	
-    for (;;) {
-	c = getch();
-
-	if (c <= 0) {
-	    break;
-	} else if (c == ' ' || c == '\t') {
-	    // skip blanks and tabs
-	} else if (c == '\n') {
-	    printf("%s", prompt);
-	} else {
-	    *command = c;
-	    return 1;
-	}
+    int result = 0;
+    char* string = NULL;
+    if (get_string_argument(prompt, &string, 1))
+    {
+	*command = string[0];
+	result = 1;
     }
-    return 0;
+    free(string);
+    return result;
+
 }
 
 	
 int
 get_number_argument(char *prompt, long *number, long default_value)
 {
-    int c;
     int result = 0;
 
-    for (;;) {
-	c = getch();
+    char* buf = NULL;
+    size_t buflen = 0;
+    char multiplier;
+    int matched;
 
-	if (c <= 0) {
-	    break;
-	} else if (c == ' ' || c == '\t') {
-	    // skip blanks and tabs
-	} else if (c == '\n') {
-	    if (default_value < 0) {
-		printf("%s", prompt);
-	    } else {
-		ungetch(c);
-		*number = default_value;
-		result = 1;
-		break;
-	    }
-	} else if ('0' <= c && c <= '9') {
-	    *number = get_number(c);
-	    result = 1;
-	    break;
-	} else {
-	    ungetch(c);
-	    *number = 0;
+    while (result == 0) {
+	printf("%s", prompt);
+
+	if (getline(&buf, &buflen, stdin) == -1)
+	{
+	    // EOF
 	    break;
 	}
+	else if ((default_value > 0) && (strncmp(buf, "\n", 1) == 0))
+	{
+	    *number = default_value;
+	    result = 1;
+	    break;
+	}
+	else if ((matched = sscanf(buf, "%ld%c", number, &multiplier)) >= 1)
+	{
+	    result = 1;
+	    if (matched == 2) {
+		if (multiplier == 'g' || multiplier == 'G') {
+		    *number *= (1024*1024*1024 / PBLOCK_SIZE);
+		} else if (multiplier == 'm' || multiplier == 'M') {
+		    *number *= (1024*1024 / PBLOCK_SIZE);
+		} else if (multiplier == 'k' || multiplier == 'K') {
+		    *number *= (1024 / PBLOCK_SIZE);
+		} else if (multiplier != '\n') {
+		    result = 0;
+		}
+	    }
+	}
     }
+    free(buf);
     return result;
 }
 
 
-long
-get_number(int first_char)
-{
-    register int c;
-    int base;
-    int digit;
-    int ret_value;
-
-    if (first_char != '0') {
-	c = first_char;
-	base = 10;
-	digit = BAD_DIGIT;
-    } else if ((c=getch()) == 'x' || c == 'X') {
-	c = getch();
-	base = 16;
-	digit = BAD_DIGIT;
-    } else {
-	c = first_char;
-	base = 8;
-	digit = 0;
-    }
-    ret_value = 0;
-    for (ret_value = 0; ; c = getch()) {
-	if (c >= '0' && c <= '9') {
-	    digit = c - '0';
-	} else if (c >='A' && c <= 'F') {
-	    digit = 10 + (c - 'A');
-	} else if (c >='a' && c <= 'f') {
-	    digit = 10 + (c - 'a');
-	} else {
-	    digit = BAD_DIGIT;
-	}
-	if (digit >= base) {
-	    break;
-	}
-	ret_value = ret_value * base + digit;
-    }
-    ungetch(c);
-    return(ret_value);
-}
-
-	
 int
 get_string_argument(char *prompt, char **string, int reprompt)
 {
-    int c;
     int result = 0;
+    size_t buflen = 0;
 
-    for (;;) {
-	c = getch();
+    while (result == 0) {
+	printf("%s", prompt);
 
-	if (c <= 0) {
+	if (getline(string, &buflen, stdin) == -1)
+	{
+	    // EOF
 	    break;
-	} else if (c == ' ' || c == '\t') {
-	    // skip blanks and tabs
-	} else if (c == '\n') {
-	    if (reprompt) {
-		printf("%s", prompt);
-	    } else {
-		ungetch(c);
-		*string = NULL;
-		break;
+	}
+	else if ((strncmp(*string, "\n", 1) == 0) && !reprompt)
+	{
+	    result = 0;
+	    break;
+	}
+	else
+	{
+	    size_t len = strnlen(*string, buflen);
+	    if ((*string)[len - 1] == '\n') {
+		(*string)[len - 1] = '\0';
 	    }
-	} else if (c == '"' || c == '\'') {
-	    *string = get_string(c);
-	    result = 1;
-	    break;
-	} else if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
-		|| (c == '-' || c == '/')) {
-	    ungetch(c);
-	    *string = get_string(' ');
-	    result = 1;
-	    break;
-	} else {
-	    ungetch(c);
-	    *string = NULL;
-	    break;
-	}
-    }
-    return result;
-}
-
-
-char *
-get_string(int eos)
-{
-    int c;
-    char *s;
-    char *ret_value;
-    char *limit;
-    int length;
-
-    ret_value = (char *) malloc(STRING_CHUNK);
-    if (ret_value == NULL) {
-	error(errno, "can't allocate memory for string buffer");
-	return NULL;
-    }
-    length = STRING_CHUNK;
-    limit = ret_value + length;
-
-    c = getch();
-    for (s = ret_value; ; c = getch()) {
-	if (s >= limit) {
-	    // expand string
-	    limit = (char *) malloc(length+STRING_CHUNK);
-	    if (limit == NULL) {
-		error(errno, "can't allocate memory for string buffer");
-		ret_value[length-1] = 0;
-		break;
-	    }
-	    strncpy(limit, ret_value, length);
-	    free(ret_value);
-	    s = limit + (s - ret_value);
-	    ret_value = limit;
-	    length += STRING_CHUNK;
-	    limit = ret_value + length;
-	}
-	if (c <= 0 || c == eos || (eos == ' ' && c == '\t')) {
-	    *s++ = 0;
-	    break;
-	} else if (c == '\n') {
-	    *s++ = 0;
-	    ungetch(c);
-	    break;
-	} else {
-	    *s++ = c;
-	}
-    }
-    return(ret_value);
-}
-
-
-long
-get_multiplier(long divisor)
-{
-    int c;
-    int result;
-
-    c = getch();
-
-    if (c <= 0 || divisor <= 0) {
-	result = 0;
-    } else if (c == 'g' || c == 'G') {
-	result = 1024*1024*1024;
-    } else if (c == 'm' || c == 'M') {
-	result = 1024*1024;
-    } else if (c == 'k' || c == 'K') {
-	result = 1024;
-    } else {
-	ungetch(c);
-	result = 1;
-    }
-    if (result > 1) {
-	if (result >= divisor) {
-	    result /= divisor;
-	} else {
 	    result = 1;
 	}
     }
     return result;
 }
-
 
 int
 number_of_digits(unsigned long value)
@@ -404,7 +207,6 @@ bad_input(char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     va_end(ap);
     fprintf(stderr, "\n");
-    flush_to_newline(1);
 }
 
 

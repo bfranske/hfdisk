@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include "hfdisk.h"
 #include "io.h"
 #include "errors.h"
 #include "partition_map.h"
@@ -51,27 +52,11 @@
 //
 // Types
 //
-typedef struct names {
-    char *abbr;
-    char *full;
-} NAMES;
 
 
 //
 // Global Constants
 //
-NAMES plist[] = {
-    {"Drvr", "Apple_Driver"},
-    {"Dr43", "Apple_Driver43"},
-    {"Free", "Apple_Free"},
-    {" HFS", "Apple_HFS"},
-    {" MFS", "Apple_MFS"},
-    {"PDOS", "Apple_PRODOS"},
-    {"junk", "Apple_Scratch"},
-    {"unix", "Apple_UNIX_SVR2"},
-    {" map", "Apple_partition_map"},
-    {0,	0}
-};
 
 const char * kStringEmpty	= "";
 const char * kStringNot		= " not";

@@ -53,15 +53,11 @@ extern const long kDefault;
 //
 void bad_input(char *fmt, ...);
 int close_device(int fildes);
-void flush_to_newline(int keep_newline);
 int get_command(char *prompt, int promptBeforeGet, int *command);
-long get_multiplier(long divisor);
 int get_number_argument(char *prompt, long *number, long default_value);
-int get_okay(char *prompt, int default_value);
+int get_okay(char *prompt);
 int get_string_argument(char *prompt, char **string, int reprompt);
-int getch();
 int number_of_digits(unsigned long value);
 int open_device(const char *path, int oflag);
 int read_block(int fd, unsigned long num, char *buf, int quiet);
-void ungetch(int c);
 int write_block(int fd, unsigned long num, char *buf);

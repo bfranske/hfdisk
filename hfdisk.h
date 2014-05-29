@@ -34,11 +34,16 @@
 //
 // Types
 //
+typedef struct names {
+	char *abbr;
+	char *full;
+} NAMES;
 
 
 //
 // Global Constants
 //
+extern const NAMES plist[];
 
 
 //

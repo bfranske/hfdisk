@@ -365,7 +365,7 @@ init_partition_map(char *name, partition_map_header* oldmap)
 
     if (oldmap != NULL) {
 	printf("map already exists\n");
-	if (get_okay("do you want to reinit? [n/y]: ", 0) != 1) {
+	if (get_okay("do you want to reinit? [N/y]: ") != 1) {
 	    return oldmap;
 	}
     }
@@ -414,9 +414,9 @@ create_partition_map(char *name)
     map->maximum_in_map = -1;
 
     number = compute_device_size(fd);
-    printf("size of 'device' is %lu blocks: ", number);
-    flush_to_newline(0);
-    get_number_argument("what should be the size? ", (long *)&number, number);
+    char prompt[64];
+    sprintf(prompt, "Device block size [%lu]: ", number);
+    get_number_argument(prompt, (long *)&number, number);
     if (number < 4) {
 	number = 4;
     }
@@ -678,7 +678,6 @@ compute_device_size(int fd)
 	if (valid != 0) {
 	    x = x + 1;
 	}
-	// printf("size in blocks = %d\n", x);
 	free(data);
     }
 
@@ -1002,3 +1001,38 @@ resize_map(long new_size, partition_map_header *map)
     delete_partition_from_map(entry);
     add_partition_to_map("Apple", kMapType, 1, new_size, map);
 }
+
+uint32_t
+find_free_space(partition_map_header *map)
+{
+    partition_map * cur;
+    uint32_t result = -1;
+
+    // find a block that starts includes base and length
+    cur = map->base_order;
+    while (cur != NULL) {
+	if (strncmp(cur->data->dpme_type, kFreeType, DPISTRLEN) == 0) {
+	    result = cur->data->dpme_pblock_start;
+	    break;
+	} else {
+	    cur = cur->next_by_base;
+	}
+    }
+    return result;
+}
+
+partition_map*
+find_entry_by_sector(uint32_t lba, partition_map_header *map)
+{
+    partition_map* cur = map->base_order;
+    while (cur != NULL) {
+	if ((cur->data->dpme_pblock_start <= lba) &&
+	    (lba < cur->data->dpme_pblock_start + cur->data->dpme_pblocks)) {
+	    break;
+	} else {
+	    cur = cur->next_by_base;
+	}
+    }
+    return cur;
+}
+

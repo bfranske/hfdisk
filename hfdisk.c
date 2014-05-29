@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <sys/ioctl.h>
 
@@ -65,6 +66,19 @@ enum getopt_values {
     kListOption = 1001
 };
 
+const NAMES plist[] = {
+	{"Drvr", "Apple_Driver"},
+	{"Dr43", "Apple_Driver43"},
+	{"Free", "Apple_Free"},
+	{" HFS", "Apple_HFS"},
+	{" MFS", "Apple_MFS"},
+	{"PDOS", "Apple_PRODOS"},
+	{"junk", "Apple_Scratch"},
+	{"unix", "Apple_UNIX_SVR2"},
+	{" map", "Apple_partition_map"},
+	{0, 0}
+};
+
 
 //
 // Global Variables
@@ -90,8 +104,7 @@ void do_reorder(partition_map_header *map);
 void do_write_partition_map(partition_map_header *map);
 void edit(char *name);
 int get_base_argument(long *number, partition_map_header *map);
-int get_command_line(int *argc, char ***argv);
-int get_size_argument(long *number, partition_map_header *map);
+int get_size_argument(uint32_t base, long *number, partition_map_header *map);
 int get_options(int argc, char **argv);
 void print_notes();
 
@@ -270,7 +283,6 @@ edit(char *name)
 	    break;
 	case 'Q':
 	case 'q':
-	    flush_to_newline(1);
 	    goto finis;
 	    break;
 	case 'I':
@@ -304,7 +316,6 @@ edit(char *name)
 	    if (!dflag) {
 		goto do_error;
 	    } else if (do_expert(map)) {
-		flush_to_newline(0);
 		goto finis;
 	    }
 	    break;
@@ -345,7 +356,7 @@ do_create_partition(partition_map_header *map, int get_type)
     if (get_base_argument(&base, map) == 0) {
 	return;
     }
-    if (get_size_argument(&length, map) == 0) {
+    if (get_size_argument(base, &length, map) == 0) {
 	return;
     }
 
@@ -356,17 +367,27 @@ do_create_partition(partition_map_header *map, int get_type)
     if (get_type == 0) {
 	add_partition_to_map(name, kUnixType, base, length, map);
 
-    } else if (get_string_argument("Type of partition: ", &type_name, 1) == 0) {
-	bad_input("Bad type");
-	return;
     } else {
-	if (strncmp(type_name, kFreeType, DPISTRLEN) == 0) {
-	    bad_input("Can't create a partition with the Free type");
-	    return;
-	}
-	if (strncmp(type_name, kMapType, DPISTRLEN) == 0) {
-	    bad_input("Can't create a partition with the Map type");
-	    return;
+	while (1) {
+	    if (get_string_argument("Type of partition (L for known types): ", &type_name, 1) == 0) {
+	      bad_input("Bad type");
+	      return;
+            } else if (strncmp(type_name, kFreeType, DPISTRLEN) == 0) {
+		    bad_input("Can't create a partition with the Free type");
+	    } else if (strncmp(type_name, kMapType, DPISTRLEN) == 0) {
+		    bad_input("Can't create a partition with the Map type");
+	    } else if (strncmp(type_name, "L", DPISTRLEN) == 0) {
+		int i = 0;
+		while (plist[i].full) {
+		    printf("%s\n", plist[i].full);
+		    ++i;
+		}
+		printf("\n");
+	    }
+		else
+		{
+			break;
+		}
 	}
 	add_partition_to_map(name, type_name, base, length, map);
     }
@@ -400,62 +421,47 @@ do_create_bootstrap_partition(partition_map_header *map)
 int
 get_base_argument(long *number, partition_map_header *map)
 {
-    partition_map * entry;
-    int c;
     int result = 0;
 
-    if (get_number_argument("First block: ", number, kDefault) == 0) {
+    uint32_t defaultFirstBlock = find_free_space(map);
+    char prompt[32];
+    sprintf(prompt, "First block [%"PRIu32"]: ", defaultFirstBlock);
+    if (get_number_argument(prompt, number, defaultFirstBlock) == 0) {
 	bad_input("Bad block number");
     } else {
 	result = 1;
-	c = getch();
-
-	if (c == 'p' || c == 'P') {
-	    entry = find_entry_by_disk_address(*number, map);
-	    if (entry == NULL) {
-		bad_input("Bad partition number");
-		result = 0;
-	    } else {
-		*number = entry->data->dpme_pblock_start;
-	    }
-	} else if (c > 0) {
-	    ungetch(c);
-	}
     }
     return result;
 }
 
 
 int
-get_size_argument(long *number, partition_map_header *map)
+get_size_argument(uint32_t base, long *number, partition_map_header *map)
 {
-    partition_map * entry;
-    int c;
     int result = 0;
-    long multiple;
 
-    if (get_number_argument("Length (in blocks, kB (k), MB (M) or GB (G)): ", number, kDefault) == 0) {
+    uint32_t defaultSize = 20480; // 10MB
+
+    // Work out how much free-space is available.
+    partition_map* part = find_entry_by_sector(base, map);
+    if (part)
+    {
+	size_t partEnd =
+	    part->data->dpme_pblock_start +
+	    part->data->dpme_pblocks;
+	defaultSize = partEnd - base;
+    }
+
+    char prompt[80];
+    sprintf(
+	prompt,
+	"Length (in blocks, kB (k), MB (M) or GB (G)) [%"PRIu32"]: ",
+	defaultSize);
+
+    if (get_number_argument(prompt, number, defaultSize) == 0) {
 	bad_input("Bad length");
     } else {
 	result = 1;
-	multiple = get_multiplier(PBLOCK_SIZE);
-	if (multiple != 1) {
-	    *number *= multiple;
-	} else {
-	    c = getch();
-
-	    if (c == 'p' || c == 'P') {
-		entry = find_entry_by_disk_address(*number, map);
-		if (entry == NULL) {
-		    bad_input("Bad partition number");
-		    result = 0;
-		} else {
-		    *number = entry->data->dpme_pblocks;
-		}
-	    } else if (c > 0) {
-		ungetch(c);
-	    }
-	}
     }
     return result;
 }
@@ -536,7 +542,7 @@ do_write_partition_map(partition_map_header *map)
     printf("the map causes all data on that partition to be LOST FOREVER. \n");
     printf("Make sure you have a backup of any data on such partitions you \n");
     printf("want to keep before answering 'yes' to the question below! \n\n");
-    if (get_okay("Write partition map? [n/y]: ", 0) != 1) {
+    if (get_okay("Write partition map? [N/y]: ") != 1) {
 	return;
     }
 
@@ -579,7 +585,6 @@ do_expert(partition_map_header *map)
 	    break;
 	case 'X':
 	case 'x':
-	    flush_to_newline(1);
 	    goto finis;
 	    break;
 	case 'Q':
