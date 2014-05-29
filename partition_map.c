@@ -584,7 +584,25 @@ add_partition_to_map(const char *name, const char *dptype, uint32_t base, uint32
     }
 	// renumber disk addresses
     renumber_disk_addresses(map);
-	// mark changed
+
+    // Special processing for driver partitions
+    if (strstr(dptype, "Driver"))
+    {
+	// Assume 68k drivers for now
+	strncpy(cur->data->dpme_process_id, "68000", 5);
+
+	Block0* bz = map->misc;
+	if (bz->sbDrvrCount < sizeof(bz->sbMap) / sizeof(DDMap))
+	{
+		DDMap* ddmap = &((DDMap*)bz->sbMap)[bz->sbDrvrCount];
+		ddmap->ddBlock = base;
+		ddmap->ddSize = length;
+		ddmap->ddType = 1; // System type, 1 for Mac+
+		bz->sbDrvrCount++;
+	}
+    }
+
+    // mark changed
     map->changed = 1;
     return 1;
 }
@@ -695,10 +713,27 @@ delete_partition_from_map(partition_map *entry)
 	printf("Can't delete entry for the map itself\n");
 	return;
     }
-    if (contains_driver(entry)) {
-	printf("Can't delete entry for a driver (yet).\n");
-	return;
+
+    // Search for and remove driver references.
+    {
+	Block0* bz = entry->the_map->misc;
+	int i;
+	for (i = 0; i < bz->sbDrvrCount; ++i)
+	{
+	    DDMap* ddmap = &((DDMap*)bz->sbMap)[i];
+	    if (ddmap->ddBlock == entry->data->dpme_pblock_start)
+	    {
+		// Found a driver!
+		memmove(
+		    &((DDMap*)bz->sbMap)[i],
+		    &((DDMap*)bz->sbMap)[i + 1],
+		    (bz->sbDrvrCount - i - 1) * sizeof(DDMap));
+		bz->sbDrvrCount--;
+		break;
+	    }
+	}
     }
+
     data = create_data(kFreeName, kFreeType,
 	    entry->data->dpme_pblock_start, entry->data->dpme_pblocks);
     if (data == NULL) {
