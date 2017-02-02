@@ -342,8 +342,8 @@ do_create_partition(partition_map_header *map, int get_type)
 {
     long base;
     long length;
-    char *name;
-    char *type_name;
+    char *name = NULL;
+    char *type_name = NULL;
 
     if (map == NULL) {
 	bad_input("No partition map exists");
