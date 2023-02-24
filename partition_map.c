@@ -589,7 +589,7 @@ add_partition_to_map(const char *name, const char *dptype, uint32_t base, uint32
     if (strstr(dptype, "Driver"))
     {
 	// Assume 68k drivers for now
-	strncpy(cur->data->dpme_process_id, "68000", 5);
+	strncpy(cur->data->dpme_process_id, "68000\0", 6);
 
 	Block0* bz = map->misc;
 	if (bz->sbDrvrCount < sizeof(bz->sbMap) / sizeof(DDMap))
